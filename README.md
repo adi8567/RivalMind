@@ -1,4 +1,4 @@
-# Multi-Agent Competitive Intelligence Orchestrator
+# RivalMind: The Multi-Agent Intelligence Engine That Turns Competitor Moves Into Your Next Masterstroke
 
 A full-stack enterprise AI platform where multiple specialized agents autonomously research competitors, analyze product/pricing changes, process financial documents, monitor news, verify conflicting information, and generate evidence-backed executive intelligence reports.
 
