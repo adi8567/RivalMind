@@ -12,6 +12,7 @@ build/
 .venv/
 venv/
 postgres_data/
+*.db
 *.log
 .DS_Store
 Thumbs.db

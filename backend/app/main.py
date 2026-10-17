@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 
 from backend.app.api.competitors import router as competitors_router
-from backend.app.api.intelligence import router as intelligence_router
+from backend.app.api.intelligence import router as intelligence_router, alias_router as intelligence_alias_router
 from backend.app.api.research import router as research_router
 from backend.app.api.settings_api import router as settings_router
 from backend.app.config import settings
@@ -84,6 +84,7 @@ app.add_middleware(
 app.include_router(competitors_router)
 app.include_router(research_router)
 app.include_router(intelligence_router)
+app.include_router(intelligence_alias_router)
 app.include_router(settings_router)
 
 

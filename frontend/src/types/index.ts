@@ -208,10 +208,17 @@ export interface SettingsInfo {
   llm_model: string;
   postgres_connected: boolean;
   pinecone_connected: boolean;
+  has_llm_key?: boolean;
+  has_pinecone_key?: boolean;
+  has_news_api_key?: boolean;
+  pinecone_index?: string;
   env_status: {
     DATABASE_URL: boolean;
     LLM_API_KEY: boolean;
     PINECONE_API_KEY: boolean;
     NEWS_API_KEY: boolean;
   };
+  available_providers?: string[];
+  available_models?: Record<string, string[]>;
+  live_status?: Record<string, string>;
 }

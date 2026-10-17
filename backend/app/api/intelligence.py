@@ -1,6 +1,6 @@
 """Intelligence endpoints for products, pricing, news, reports, and dashboards."""
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.database import get_db
 from backend.app.models.models import NewsItem, PricingIntel, ProductIntel, Report
 from backend.app.schemas.schemas import (
-    DashboardStats,
     NewsItemResponse,
     PricingIntelResponse,
     ProductIntelResponse,
@@ -17,6 +16,7 @@ from backend.app.schemas.schemas import (
 from backend.app.services.db_service import get_dashboard_stats
 
 router = APIRouter(prefix="/api/intelligence", tags=["Intelligence"])
+alias_router = APIRouter(prefix="/api", tags=["Intelligence Aliases"])
 
 
 @router.get("/products", response_model=List[ProductIntelResponse])
@@ -103,10 +103,19 @@ async def get_report_by_id(
     return report
 
 
-@router.get("/dashboard", response_model=DashboardStats)
+@router.get("/dashboard", response_model=Dict[str, Any])
 async def get_dashboard_metrics(
     db: AsyncSession = Depends(get_db),
-):
+) -> Dict[str, Any]:
     """Get high-level statistics and intelligence overview for dashboard."""
     stats = await get_dashboard_stats(db)
     return stats
+
+
+# Attach route handlers to alias router (/api/products, /api/pricing, etc.)
+alias_router.add_api_route("/products", get_product_intelligence, methods=["GET"], response_model=List[ProductIntelResponse], include_in_schema=False)
+alias_router.add_api_route("/pricing", get_pricing_intelligence, methods=["GET"], response_model=List[PricingIntelResponse], include_in_schema=False)
+alias_router.add_api_route("/news", get_news_intelligence, methods=["GET"], response_model=List[NewsItemResponse], include_in_schema=False)
+alias_router.add_api_route("/reports", get_all_reports, methods=["GET"], response_model=List[ReportResponse], include_in_schema=False)
+alias_router.add_api_route("/reports/{id}", get_report_by_id, methods=["GET"], response_model=ReportResponse, include_in_schema=False)
+alias_router.add_api_route("/dashboard", get_dashboard_metrics, methods=["GET"], response_model=Dict[str, Any], include_in_schema=False)

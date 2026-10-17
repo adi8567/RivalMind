@@ -23,6 +23,8 @@ import {
   Clock,
   Printer,
   Share2,
+  Copy,
+  Check,
   Layers,
 } from 'lucide-react';
 import { getReport, getIsDemoFallbackActive } from '@/lib/api';
@@ -33,13 +35,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/lib/utils';
 import { ThreatGauge } from '@/components/reports/threat-gauge';
 import { ReportSection } from '@/components/reports/report-section';
+import { useToast } from '@/components/ui/toast';
 
 export default function ReportDetailPage() {
   const params = useParams();
   const reportId = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
+  const { toast } = useToast();
 
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     async function loadReport() {
@@ -56,19 +61,49 @@ export default function ReportDetailPage() {
     loadReport();
   }, [reportId]);
 
+  const handleCopySummary = () => {
+    if (!report) return;
+    const briefingText = `# ${report.title}
+Target: ${report.competitor_name}
+Threat Score: ${report.threat_score}/100
+Date: ${formatDate(report.created_at)}
+
+## Executive Summary
+${report.executive_summary}
+
+## Major Developments
+${report.major_developments.map((d) => `- ${d}`).join('\n')}
+
+## Threat Assessment
+${report.threat_assessment}
+
+## Strategic Counter-Tactics
+${report.strategic_implications}`;
+
+    navigator.clipboard.writeText(briefingText);
+    setCopied(true);
+    toast.success('Dossier Copied', 'Executive briefing markdown copied to clipboard.');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast.info('Link Copied', 'Direct URL to this verified intelligence report copied.');
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-10 w-48" />
-        <Skeleton className="h-64 w-full rounded-xl" />
-        <Skeleton className="h-96 w-full rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-2xl" />
+        <Skeleton className="h-96 w-full rounded-2xl" />
       </div>
     );
   }
 
   if (!report) {
     return (
-      <div className="p-12 text-center">
+      <div className="p-12 text-center rounded-2xl border border-dashed border-border bg-card">
         <AlertTriangle className="h-12 w-12 text-amber-400 mx-auto mb-3" />
         <h2 className="text-lg font-bold text-foreground">Report Not Found</h2>
         <p className="text-sm text-muted-foreground mt-1">
@@ -76,7 +111,7 @@ export default function ReportDetailPage() {
         </p>
         <Link
           href="/reports"
-          className="mt-4 inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-semibold"
+          className="mt-4 inline-flex items-center gap-1.5 text-xs text-primary hover:underline font-semibold"
         >
           <ArrowLeft className="h-4 w-4" /> Back to Reports
         </Link>
@@ -87,7 +122,7 @@ export default function ReportDetailPage() {
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-16">
       {/* Navigation & Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-6">
         <div>
           <Link
             href="/reports"
@@ -109,7 +144,7 @@ export default function ReportDetailPage() {
               Generated {formatDate(report.created_at)}
             </span>
             <span className="text-muted-foreground text-xs">•</span>
-            <Badge variant="outline" className="text-[11px] border-emerald-500/30 text-emerald-400">
+            <Badge variant="outline" className="text-[11px] border-emerald-500/30 text-emerald-400 bg-emerald-500/10">
               Verified by Synthesis Agent
             </Badge>
           </div>
@@ -118,15 +153,34 @@ export default function ReportDetailPage() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
           {getIsDemoFallbackActive() && (
-            <Badge variant="outline" className="border-amber-500/30 text-amber-400">
+            <Badge variant="outline" className="border-amber-500/30 text-amber-400 bg-amber-500/10 text-xs">
               Synthetic Demo Dossier
             </Badge>
           )}
+
+          <button
+            onClick={handleCopySummary}
+            className="inline-flex items-center gap-1.5 text-xs font-medium bg-card text-foreground hover:bg-card/80 px-3 py-2 rounded-xl border border-border/80 transition-all hover:scale-[1.02]"
+            title="Copy Executive Summary to Clipboard"
+          >
+            {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
+            <span>{copied ? 'Copied' : 'Copy Briefing'}</span>
+          </button>
+
+          <button
+            onClick={handleShare}
+            className="inline-flex items-center gap-1.5 text-xs font-medium bg-card text-foreground hover:bg-card/80 px-3 py-2 rounded-xl border border-border/80 transition-all hover:scale-[1.02]"
+            title="Share Dossier Link"
+          >
+            <Share2 className="h-3.5 w-3.5 text-muted-foreground" />
+            <span>Share</span>
+          </button>
+
           <button
             onClick={() => window.print()}
-            className="inline-flex items-center gap-1.5 text-xs font-medium bg-secondary text-foreground hover:bg-secondary/80 px-3 py-2 rounded-lg border border-border transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-medium bg-secondary text-foreground hover:bg-secondary/80 px-3 py-2 rounded-xl border border-border transition-all hover:scale-[1.02]"
           >
             <Printer className="h-3.5 w-3.5" /> Print / PDF
           </button>
@@ -136,14 +190,14 @@ export default function ReportDetailPage() {
       {/* Threat Assessment & Executive Summary Overview Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Executive Summary Card (2 Cols) */}
-        <Card className="lg:col-span-2 bg-card/80 border-border">
+        <Card className="lg:col-span-2 glass-card rounded-2xl border-border/80 bg-card/60 shadow-md">
           <CardHeader className="pb-3 border-b border-border/60">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
                 <FileText className="h-5 w-5 text-primary" />
                 Executive Summary
               </CardTitle>
-              <Badge variant="success" className="text-[11px]">
+              <Badge variant="success" className="text-[11px] font-semibold">
                 High Confidence
               </Badge>
             </div>
@@ -159,7 +213,7 @@ export default function ReportDetailPage() {
               </h4>
               <ul className="space-y-2">
                 {report.major_developments.map((dev, idx) => (
-                  <li key={idx} className="text-xs text-foreground/80 flex items-start gap-2 bg-secondary/40 p-2.5 rounded-md border border-border/50">
+                  <li key={idx} className="text-xs text-foreground/80 flex items-start gap-2 bg-secondary/40 p-2.5 rounded-xl border border-border/50">
                     <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
                     <span>{dev}</span>
                   </li>
@@ -170,7 +224,7 @@ export default function ReportDetailPage() {
         </Card>
 
         {/* Explainable Threat Assessment Card (1 Col) */}
-        <Card className="bg-card/80 border-border flex flex-col justify-between">
+        <Card className="glass-card rounded-2xl border-border/80 bg-card/60 flex flex-col justify-between shadow-md">
           <CardHeader className="pb-2 border-b border-border/60">
             <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
               <ShieldAlert className="h-5 w-5 text-rose-400" />
@@ -182,7 +236,7 @@ export default function ReportDetailPage() {
               <ThreatGauge score={report.threat_score} size={150} showExplanation={false} />
             </div>
 
-            <div className="bg-secondary/60 p-3 rounded-lg border border-border space-y-2">
+            <div className="bg-secondary/60 p-3.5 rounded-xl border border-border/70 space-y-2">
               <div className="text-[11px] font-bold text-foreground uppercase tracking-wider">
                 Threat Rationale & Scoring Drivers:
               </div>
@@ -205,7 +259,7 @@ export default function ReportDetailPage() {
         >
           <div className="space-y-2">
             {report.product_intel.map((item, idx) => (
-              <div key={idx} className="flex items-start gap-2 text-xs text-foreground/90 bg-secondary/30 p-2.5 rounded border border-border/40">
+              <div key={idx} className="flex items-start gap-2 text-xs text-foreground/90 bg-secondary/30 p-2.5 rounded-xl border border-border/40">
                 <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
                 <span>{item}</span>
               </div>
@@ -222,7 +276,7 @@ export default function ReportDetailPage() {
         >
           <div className="space-y-2">
             {report.pricing_intel.map((item, idx) => (
-              <div key={idx} className="flex items-start gap-2 text-xs text-foreground/90 bg-secondary/30 p-2.5 rounded border border-border/40">
+              <div key={idx} className="flex items-start gap-2 text-xs text-foreground/90 bg-secondary/30 p-2.5 rounded-xl border border-border/40">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
                 <span>{item}</span>
               </div>
@@ -239,7 +293,7 @@ export default function ReportDetailPage() {
         >
           <div className="space-y-2">
             {report.financial_intel.map((item, idx) => (
-              <div key={idx} className="flex items-start gap-2 text-xs text-foreground/90 bg-secondary/30 p-2.5 rounded border border-border/40">
+              <div key={idx} className="flex items-start gap-2 text-xs text-foreground/90 bg-secondary/30 p-2.5 rounded-xl border border-border/40">
                 <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 mt-1.5 shrink-0" />
                 <span>{item}</span>
               </div>
@@ -256,7 +310,7 @@ export default function ReportDetailPage() {
         >
           <div className="space-y-2">
             {report.news_intel.map((item, idx) => (
-              <div key={idx} className="flex items-start gap-2 text-xs text-foreground/90 bg-secondary/30 p-2.5 rounded border border-border/40">
+              <div key={idx} className="flex items-start gap-2 text-xs text-foreground/90 bg-secondary/30 p-2.5 rounded-xl border border-border/40">
                 <span className="h-1.5 w-1.5 rounded-full bg-blue-400 mt-1.5 shrink-0" />
                 <span>{item}</span>
               </div>
@@ -273,7 +327,7 @@ export default function ReportDetailPage() {
         >
           <div className="space-y-2">
             {report.strategic_moves.map((item, idx) => (
-              <div key={idx} className="flex items-start gap-2 text-xs text-foreground/90 bg-secondary/30 p-2.5 rounded border border-border/40">
+              <div key={idx} className="flex items-start gap-2 text-xs text-foreground/90 bg-secondary/30 p-2.5 rounded-xl border border-border/40">
                 <span className="h-1.5 w-1.5 rounded-full bg-purple-400 mt-1.5 shrink-0" />
                 <span>{item}</span>
               </div>
@@ -285,7 +339,7 @@ export default function ReportDetailPage() {
       {/* Risks and Opportunities Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Risks */}
-        <Card className="bg-rose-950/10 border-rose-500/30">
+        <Card className="bg-rose-950/15 border-rose-500/30 rounded-2xl shadow-sm">
           <CardHeader className="pb-3 border-b border-rose-500/20">
             <CardTitle className="text-sm font-bold text-rose-400 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
@@ -294,10 +348,10 @@ export default function ReportDetailPage() {
           </CardHeader>
           <CardContent className="pt-4 space-y-3">
             {report.risks.map((risk, idx) => (
-              <div key={idx} className="bg-card/80 p-3 rounded-lg border border-border space-y-1">
+              <div key={idx} className="bg-card/80 p-3 rounded-xl border border-border/70 space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-xs text-foreground">{risk.title}</span>
-                  <Badge variant="destructive" className="uppercase text-[9px] px-1.5">
+                  <Badge variant="destructive" className="uppercase text-[9px] px-1.5 font-semibold">
                     {risk.severity} Severity
                   </Badge>
                 </div>
@@ -313,7 +367,7 @@ export default function ReportDetailPage() {
         </Card>
 
         {/* Opportunities */}
-        <Card className="bg-emerald-950/10 border-emerald-500/30">
+        <Card className="bg-emerald-950/15 border-emerald-500/30 rounded-2xl shadow-sm">
           <CardHeader className="pb-3 border-b border-emerald-500/20">
             <CardTitle className="text-sm font-bold text-emerald-400 flex items-center gap-2">
               <Lightbulb className="h-4 w-4" />
@@ -322,10 +376,10 @@ export default function ReportDetailPage() {
           </CardHeader>
           <CardContent className="pt-4 space-y-3">
             {report.opportunities.map((opp, idx) => (
-              <div key={idx} className="bg-card/80 p-3 rounded-lg border border-border space-y-1">
+              <div key={idx} className="bg-card/80 p-3 rounded-xl border border-border/70 space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-xs text-foreground">{opp.title}</span>
-                  <Badge variant="success" className="uppercase text-[9px] px-1.5">
+                  <Badge variant="success" className="uppercase text-[9px] px-1.5 font-semibold">
                     {opp.impact} Impact
                   </Badge>
                 </div>
@@ -342,7 +396,7 @@ export default function ReportDetailPage() {
       </div>
 
       {/* Strategic Implications & Recommendations */}
-      <Card className="bg-card/80 border-border">
+      <Card className="glass-card rounded-2xl border-border/80 bg-card/60 shadow-md">
         <CardHeader className="pb-3 border-b border-border/60">
           <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
             <Compass className="h-5 w-5 text-primary" />
@@ -350,14 +404,14 @@ export default function ReportDetailPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
-          <p className="text-sm text-foreground/90 leading-relaxed font-medium bg-secondary/30 p-4 rounded-lg border border-border">
+          <p className="text-sm text-foreground/90 leading-relaxed font-medium bg-secondary/30 p-4 rounded-xl border border-border/60">
             {report.strategic_implications}
           </p>
         </CardContent>
       </Card>
 
       {/* Evidence-Backed Source Directory */}
-      <Card className="bg-card/80 border-border">
+      <Card className="glass-card rounded-2xl border-border/80 bg-card/60 shadow-md">
         <CardHeader className="pb-3 border-b border-border/60">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
@@ -383,7 +437,7 @@ export default function ReportDetailPage() {
               </thead>
               <tbody className="divide-y divide-border/60">
                 {report.sources.map((src) => (
-                  <tr key={src.id} className="hover:bg-secondary/30 transition-colors">
+                  <tr key={src.id} className="hover:bg-secondary/40 transition-colors">
                     <td className="py-2.5 px-3 max-w-[280px]">
                       <div className="font-semibold text-foreground truncate">{src.title}</div>
                       {src.snippet && (

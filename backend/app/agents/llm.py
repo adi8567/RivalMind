@@ -1,4 +1,4 @@
-"""LLM provider factory supporting OpenAI, Anthropic, and Demo mode."""
+"""LLM provider factory supporting OpenAI, Anthropic, Gemini, Groq, Ollama, and OpenRouter."""
 
 import logging
 from typing import Any, Optional
@@ -23,24 +23,45 @@ def get_llm(
         BaseChatModel instance or None.
     """
     if settings.DEMO_MODE and not override_demo:
-        logger.debug("Demo mode active; LLM invocation skipped in favor of demo fixtures.")
         return None
 
     api_key = settings.LLM_API_KEY.strip()
-    if not api_key:
-        logger.info("LLM_API_KEY not configured; agents will fall back to built-in datasets.")
-        return None
-
     provider = settings.LLM_PROVIDER.lower().strip()
     target_model = model_name or settings.LLM_MODEL
 
-    try:
-        if provider == "openai":
-            from langchain_openai import ChatOpenAI
+    # Ollama doesn't strictly need API key
+    if not api_key and provider != "ollama":
+        return None
 
+    try:
+        from langchain_openai import ChatOpenAI
+
+        if provider == "openai":
             return ChatOpenAI(
                 api_key=api_key,
                 model=target_model,
+                temperature=temperature,
+            )
+        elif provider in ["gemini", "google"]:
+            # Google Gemini OpenAI-compatible gateway
+            return ChatOpenAI(
+                api_key=api_key,
+                model=target_model or "gemini-1.5-flash",
+                base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+                temperature=temperature,
+            )
+        elif provider == "groq":
+            return ChatOpenAI(
+                api_key=api_key,
+                model=target_model or "llama-3.3-70b-versatile",
+                base_url="https://api.groq.com/openai/v1",
+                temperature=temperature,
+            )
+        elif provider == "ollama":
+            return ChatOpenAI(
+                api_key="ollama",
+                model=target_model or "llama3",
+                base_url="http://localhost:11434/v1",
                 temperature=temperature,
             )
         elif provider == "anthropic":
@@ -49,7 +70,7 @@ def get_llm(
 
                 return ChatAnthropic(
                     api_key=api_key,
-                    model_name=target_model,
+                    model_name=target_model or "claude-3-5-sonnet-20241022",
                     temperature=temperature,
                 )
             except ImportError:
@@ -58,8 +79,12 @@ def get_llm(
                 )
                 return None
         else:
-            logger.warning(f"Unsupported LLM provider '{provider}'. Falling back to None.")
-            return None
+            # Generic OpenAI compatible provider
+            return ChatOpenAI(
+                api_key=api_key,
+                model=target_model,
+                temperature=temperature,
+            )
     except Exception as exc:
         logger.error(f"Failed to initialize LLM provider ({provider}): {exc}")
         return None

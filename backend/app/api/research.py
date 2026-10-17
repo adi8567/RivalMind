@@ -30,6 +30,7 @@ router = APIRouter(prefix="/api/research", tags=["Research"])
 
 
 @router.post("/run", response_model=ResearchRunResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/runs", response_model=ResearchRunResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def initiate_research_run(
     payload: ResearchRunCreate,
     db: AsyncSession = Depends(get_db),
@@ -86,6 +87,32 @@ async def stream_run_progress(
 ):
     """Stream live Server-Sent Events (SSE) representing agent execution progress."""
     return EventSourceResponse(progress_stream_generator(id))
+
+
+@router.get("/sources", response_model=List[SourceResponse])
+async def get_all_sources(
+    limit: int = Query(100, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+):
+    """Retrieve all audited sources across all runs."""
+    stmt = select(Source).order_by(Source.retrieved_at.desc()).limit(limit)
+    res = await db.execute(stmt)
+    return list(res.scalars().all())
+
+
+@router.get("/findings", response_model=List[FindingResponse])
+async def get_all_findings(
+    category: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+):
+    """Retrieve all findings across all runs."""
+    stmt = select(Finding).order_by(Finding.confidence.desc())
+    if category:
+        stmt = stmt.where(Finding.category == category)
+    stmt = stmt.limit(limit)
+    res = await db.execute(stmt)
+    return list(res.scalars().all())
 
 
 @router.get("/runs/{id}/sources", response_model=List[SourceResponse])

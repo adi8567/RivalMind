@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Building2,
@@ -17,6 +17,9 @@ import {
   Loader2,
   ChevronRight,
   BarChart3,
+  Zap,
+  Search,
+  Filter,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -45,9 +48,11 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useRouter } from 'next/navigation';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
+import { useToast } from '@/components/ui/toast';
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +60,8 @@ export default function DashboardPage() {
   const [selectedCompId, setSelectedCompId] = useState('');
   const [query, setQuery] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [runsSearch, setRunsSearch] = useState('');
+  const [quickRunningTarget, setQuickRunningTarget] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -80,62 +87,136 @@ export default function DashboardPage() {
     if (!selectedCompId) return;
     setIsSubmitting(true);
     try {
+      const selectedComp = competitors.find((c) => c.id === selectedCompId);
       const run = await startResearchRun(
         selectedCompId,
-        query || 'Automated multi-agent threat assessment and competitive scan'
+        query || `Comprehensive autonomous threat audit & research for ${selectedComp?.name || 'target'}`
+      );
+      toast.success(
+        'Research Run Started',
+        `Autonomous agents coordinating for ${selectedComp?.name || 'target'}.`
       );
       setDialogOpen(false);
       router.push(`/research/${run.id}`);
     } catch (err) {
+      toast.error('Launch Error', 'Failed to initialize agent orchestrator.');
       console.error(err);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleQuickLaunch = async (targetName: string, promptText: string) => {
+    setQuickRunningTarget(targetName);
+    try {
+      let targetComp = competitors.find((c) => c.name.toLowerCase().includes(targetName.toLowerCase()));
+      let targetId = targetComp?.id;
+
+      if (!targetId && competitors.length > 0) {
+        targetId = competitors[0].id;
+      }
+
+      if (!targetId) {
+        toast.error('No Targets Registered', 'Please add a competitor first.');
+        return;
+      }
+
+      const run = await startResearchRun(targetId, promptText);
+      toast.success('Agent Fleet Dispatched', `Analysis begun for ${targetName}`);
+      router.push(`/research/${run.id}`);
+    } catch (err) {
+      toast.error('Dispatch Failed', 'Could not run instant analysis.');
+    } finally {
+      setQuickRunningTarget(null);
+    }
+  };
+
   const isDemo = getIsDemoFallbackActive();
+
+  const filteredRuns = useMemo(() => {
+    if (!stats?.recent_runs) return [];
+    if (!runsSearch) return stats.recent_runs;
+    return stats.recent_runs.filter(
+      (r) =>
+        r.competitor_name?.toLowerCase().includes(runsSearch.toLowerCase()) ||
+        r.query?.toLowerCase().includes(runsSearch.toLowerCase()) ||
+        r.status?.toLowerCase().includes(runsSearch.toLowerCase())
+    );
+  }, [stats?.recent_runs, runsSearch]);
 
   return (
     <div className="space-y-6">
-      {/* Top Welcome / Status Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-border bg-gradient-to-r from-card via-[#111827] to-card p-6 shadow-sm">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-              Competitive Intelligence Radar
-            </h2>
-            {isDemo && (
-              <Badge variant="outline" className="border-amber-500/30 text-amber-400 bg-amber-500/10 text-[11px]">
-                Demo Data Active
-              </Badge>
-            )}
+      {/* Top Welcome & Interactive Quick Actions Bar */}
+      <div className="rounded-2xl border border-border/80 bg-gradient-to-r from-card via-[#0e1424] to-card p-6 shadow-md">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                Competitive Intelligence Radar
+              </h2>
+              {isDemo && (
+                <Badge variant="outline" className="border-amber-500/30 text-amber-400 bg-amber-500/10 text-[11px]">
+                  Demo Data Active
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs sm:text-sm text-muted-foreground max-w-2xl">
+              Multi-agent orchestrator continuously synthesizing product deltas, pricing matrices, and 10-Q/K regulatory filings.
+            </p>
           </div>
-          <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
-            Multi-agent orchestrator continuously synthesizing product deltas, pricing matrices, and 10-Q/K regulatory filings.
-          </p>
+
+          <button
+            onClick={() => setDialogOpen(true)}
+            className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] transition-all shrink-0"
+          >
+            <Sparkles className="h-4 w-4" />
+            <span>New Custom Analysis</span>
+          </button>
         </div>
 
-        <button
-          onClick={() => setDialogOpen(true)}
-          className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all shrink-0"
-        >
-          <Sparkles className="h-4 w-4" />
-          <span>New Analysis</span>
-        </button>
+        {/* Quick Launch Preset Chips */}
+        <div className="mt-5 pt-4 border-t border-border/60">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground block mb-2">
+            ⚡ Quick-Dispatch Autonomous Agent Fleet:
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { name: 'Microsoft', prompt: '30-day comprehensive audit of Azure AI pricing, Copilot Studio, and SEC filings' },
+              { name: 'Google Cloud', prompt: 'Gemini 1.5 enterprise pricing cuts, Vertex AI updates, and market expansion' },
+              { name: 'Amazon AWS', prompt: 'Bedrock model pricing, enterprise discounts, and quarterly revenue disclosures' },
+              { name: 'OpenAI', prompt: 'Enterprise API rate shifts, new model announcements, and executive moves' },
+              { name: 'Nvidia', prompt: 'Data center GPU margins, Blackwell architectural pricing, and regulatory filings' },
+            ].map((preset) => (
+              <button
+                key={preset.name}
+                onClick={() => handleQuickLaunch(preset.name, preset.prompt)}
+                disabled={!!quickRunningTarget}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/80 bg-card/60 hover:bg-card hover:border-primary/50 text-xs font-medium text-foreground/90 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+              >
+                {quickRunningTarget === preset.name ? (
+                  <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                ) : (
+                  <Zap className="h-3 w-3 text-amber-400" />
+                )}
+                <span>Run {preset.name} Scan</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* 4 Stats Cards */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-28 w-full" />
+            <Skeleton key={i} className="h-28 w-full rounded-2xl" />
           ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard
             title="Monitored Targets"
-            value={stats?.total_competitors ?? 0}
+            value={stats?.total_competitors ?? competitors.length}
             change="+2 this month"
             changeType="positive"
             icon={Building2}
@@ -171,7 +252,7 @@ export default function DashboardPage() {
       {/* Mid Section: Threat Comparison Chart & Recent Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Threat Comparison Chart */}
-        <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="lg:col-span-2 rounded-2xl border border-border/80 bg-card/60 p-6 shadow-sm backdrop-blur-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-primary" />
@@ -193,7 +274,7 @@ export default function DashboardPage() {
           </div>
 
           {loading ? (
-            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-64 w-full rounded-xl" />
           ) : (
             <div className="h-64 w-full pt-2">
               <ResponsiveContainer width="100%" height="100%">
@@ -216,14 +297,15 @@ export default function DashboardPage() {
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#111827',
+                      backgroundColor: '#0c111d',
                       borderColor: '#374151',
-                      borderRadius: '8px',
+                      borderRadius: '12px',
                       fontSize: '12px',
+                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
                     }}
                     formatter={(value: any) => [`${value} / 100`, 'Threat Score']}
                   />
-                  <Bar dataKey="score" radius={[6, 6, 0, 0]}>
+                  <Bar dataKey="score" radius={[8, 8, 0, 0]}>
                     {(stats?.threat_comparison || []).map((entry, index) => {
                       const color =
                         entry.score > 70
@@ -241,7 +323,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent Alerts / Changes */}
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm flex flex-col justify-between">
+        <div className="rounded-2xl border border-border/80 bg-card/60 p-6 shadow-sm flex flex-col justify-between backdrop-blur-sm">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -250,7 +332,7 @@ export default function DashboardPage() {
                   Recent Threat Signals
                 </h3>
               </div>
-              <Badge variant="outline" className="text-[10px]">
+              <Badge variant="outline" className="text-[10px] font-mono text-emerald-400 border-emerald-500/30">
                 Live Feed
               </Badge>
             </div>
@@ -258,7 +340,7 @@ export default function DashboardPage() {
             {loading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
+                  <Skeleton key={i} className="h-16 w-full rounded-xl" />
                 ))}
               </div>
             ) : (
@@ -266,13 +348,13 @@ export default function DashboardPage() {
                 {(stats?.recent_alerts || []).map((alert) => (
                   <div
                     key={alert.id}
-                    className="rounded-lg border border-border/70 bg-card/50 p-3 hover:bg-secondary/40 transition-colors"
+                    className="rounded-xl border border-border/70 bg-card/60 p-3 hover:bg-secondary/40 transition-all hover:scale-[1.01]"
                   >
                     <div className="flex items-center justify-between text-[11px] mb-1">
                       <span className="font-semibold text-foreground">
                         {alert.competitor}
                       </span>
-                      <span className="text-muted-foreground">{alert.time}</span>
+                      <span className="text-muted-foreground">{alert.time?.includes('T') ? formatRelativeTime(alert.time) : alert.time}</span>
                     </div>
                     <p className="text-xs text-foreground/90 leading-tight">
                       {alert.title}
@@ -299,7 +381,7 @@ export default function DashboardPage() {
 
           <Link
             href="/news"
-            className="mt-4 flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card/60 py-2 text-xs font-medium text-foreground hover:bg-accent transition-colors"
+            className="mt-4 flex items-center justify-center gap-1.5 rounded-xl border border-border bg-card/60 py-2.5 text-xs font-medium text-foreground hover:bg-card hover:border-primary/40 transition-all"
           >
             <span>View Full Market Feed</span>
             <ChevronRight className="h-3.5 w-3.5" />
@@ -310,8 +392,8 @@ export default function DashboardPage() {
       {/* Bottom Section: Recent Research Runs & Activity Timeline */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Research Runs Table */}
-        <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
+        <div className="lg:col-span-2 rounded-2xl border border-border/80 bg-card/60 p-6 shadow-sm backdrop-blur-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div className="flex items-center gap-2">
               <FlaskConical className="h-5 w-5 text-primary" />
               <div>
@@ -323,18 +405,31 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
-            <Link
-              href="/research"
-              className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
-            >
-              All Runs <ArrowRight className="h-3 w-3" />
-            </Link>
+
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground/60" />
+                <input
+                  type="text"
+                  placeholder="Filter runs..."
+                  value={runsSearch}
+                  onChange={(e) => setRunsSearch(e.target.value)}
+                  className="h-8 pl-8 pr-2.5 rounded-lg border border-input/60 bg-card text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary w-36 sm:w-44"
+                />
+              </div>
+              <Link
+                href="/research"
+                className="text-xs text-primary hover:underline flex items-center gap-1 font-medium shrink-0"
+              >
+                All Runs <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
           </div>
 
           {loading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-12 w-full" />
+                <Skeleton key={i} className="h-12 w-full rounded-xl" />
               ))}
             </div>
           ) : (
@@ -350,8 +445,8 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">
-                  {(stats?.recent_runs || []).map((run) => (
-                    <tr key={run.id} className="hover:bg-secondary/30 transition-colors">
+                  {filteredRuns.map((run) => (
+                    <tr key={run.id} className="hover:bg-secondary/40 transition-colors">
                       <td className="py-3.5 font-semibold text-foreground">
                         {run.competitor_name || 'Target'}
                       </td>
@@ -360,11 +455,11 @@ export default function DashboardPage() {
                       </td>
                       <td className="py-3.5">
                         {run.status === 'completed' ? (
-                          <Badge variant="success" className="gap-1">
+                          <Badge variant="success" className="gap-1 font-medium">
                             <CheckCircle2 className="h-3 w-3" /> Completed
                           </Badge>
                         ) : run.status === 'running' ? (
-                          <Badge variant="info" className="gap-1 animate-pulse">
+                          <Badge variant="info" className="gap-1 animate-pulse font-medium">
                             <Loader2 className="h-3 w-3 animate-spin" /> Running
                           </Badge>
                         ) : (
@@ -377,13 +472,20 @@ export default function DashboardPage() {
                       <td className="py-3.5 text-right">
                         <Link
                           href={`/research/${run.id}`}
-                          className="inline-flex items-center gap-1 rounded px-2.5 py-1 font-medium text-primary hover:bg-primary/10 transition-colors"
+                          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 font-medium text-primary hover:bg-primary/10 transition-colors"
                         >
                           Inspect <ArrowRight className="h-3 w-3" />
                         </Link>
                       </td>
                     </tr>
                   ))}
+                  {filteredRuns.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-xs text-muted-foreground">
+                        No research runs found.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -391,7 +493,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Activity Timeline */}
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="rounded-2xl border border-border/80 bg-card/60 p-6 shadow-sm backdrop-blur-sm">
           <div className="flex items-center gap-2 mb-4">
             <Activity className="h-5 w-5 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">
@@ -402,11 +504,11 @@ export default function DashboardPage() {
           {loading ? (
             <div className="space-y-4">
               {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-10 w-full" />
+                <Skeleton key={i} className="h-10 w-full rounded-xl" />
               ))}
             </div>
           ) : (
-            <div className="relative pl-4 space-y-4 before:absolute before:left-1 before:top-2 before:bottom-2 before:w-[2px] before:bg-border">
+            <div className="relative pl-4 space-y-4 before:absolute before:left-1 before:top-2 before:bottom-2 before:w-[2px] before:bg-border/60">
               {(stats?.activity_timeline || []).map((item) => (
                 <div key={item.id} className="relative text-xs">
                   <div className="absolute -left-[19px] top-1 h-2.5 w-2.5 rounded-full bg-primary border-2 border-[#090d16]" />
@@ -451,7 +553,7 @@ export default function DashboardPage() {
                 >
                   {competitors.map((c) => (
                     <option key={c.id} value={c.id} className="bg-card text-foreground">
-                      {c.name} ({c.industry})
+                      {c.name} ({c.industry || 'Tech'})
                     </option>
                   ))}
                 </Select>
@@ -482,7 +584,7 @@ export default function DashboardPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-all shadow-md"
               >
                 {isSubmitting ? 'Spawning Agents...' : 'Execute Analysis'}
               </button>
