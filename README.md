@@ -412,7 +412,6 @@ multi-agent-ci-orchestrator/
 MIT License
 
 ---
-
 4. Run tests
 5. Submit a pull request
 
