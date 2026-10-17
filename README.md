@@ -1,4 +1,4 @@
-# 🎯 Multi-Agent Competitive Intelligence Orchestrator
+# Multi-Agent Competitive Intelligence Orchestrator
 
 A full-stack enterprise AI platform where multiple specialized agents autonomously research competitors, analyze product/pricing changes, process financial documents, monitor news, verify conflicting information, and generate evidence-backed executive intelligence reports.
 
@@ -9,7 +9,7 @@ A full-stack enterprise AI platform where multiple specialized agents autonomous
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Architecture](#architecture)
@@ -26,7 +26,7 @@ A full-stack enterprise AI platform where multiple specialized agents autonomous
 
 ---
 
-## 🔍 Overview
+##  Overview
 
 The CI Orchestrator provides automated competitive intelligence through a pipeline of specialized AI agents:
 
@@ -48,7 +48,7 @@ The CI Orchestrator provides automated competitive intelligence through a pipeli
 
 ---
 
-## 🏗 Architecture
+## Architecture
 
 ```
 Next.js Frontend
@@ -82,7 +82,7 @@ Executive Intelligence Report
 
 ---
 
-## 🤖 Agents
+##  Agents
 
 | Agent | Purpose | Key Capabilities |
 |-------|---------|-------------------|
@@ -96,7 +96,7 @@ Executive Intelligence Report
 
 ---
 
-## 🛠 Tech Stack
+##  Tech Stack
 
 ### Frontend
 - **Next.js 14** — React framework with App Router
@@ -123,7 +123,7 @@ Executive Intelligence Report
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -191,7 +191,7 @@ npm run dev
 
 ---
 
-## ⚙️ Configuration
+##  Configuration
 
 All configuration is via environment variables. See `.env.example` for the full list.
 
@@ -216,7 +216,7 @@ All configuration is via environment variables. See `.env.example` for the full 
 
 ---
 
-## 📖 Usage
+##  Usage
 
 ### 1. Add a Competitor
 
@@ -259,7 +259,7 @@ The executive report includes:
 
 ---
 
-## 📚 RAG Pipeline
+##  RAG Pipeline
 
 The Financial Intelligence Agent uses a Retrieval-Augmented Generation pipeline:
 
@@ -283,7 +283,7 @@ In demo mode, the RAG pipeline returns realistic sample data without requiring P
 
 ---
 
-## 🎭 Demo Mode
+##  Demo Mode
 
 Demo mode (`DEMO_MODE=true`) provides:
 
@@ -297,7 +297,7 @@ Demo mode (`DEMO_MODE=true`) provides:
 
 ---
 
-## 📡 API Reference
+##  API Reference
 
 ### Competitors
 | Method | Endpoint | Description |
@@ -334,7 +334,7 @@ Full interactive docs: http://localhost:8000/docs
 
 ---
 
-## 🧪 Testing
+##  Testing
 
 ```bash
 cd backend
@@ -352,7 +352,7 @@ pytest tests/test_api.py
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 multi-agent-ci-orchestrator/
@@ -407,17 +407,12 @@ multi-agent-ci-orchestrator/
 
 ---
 
-## 📄 License
+##  License
 
 MIT License
 
 ---
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
 4. Run tests
 5. Submit a pull request
 
